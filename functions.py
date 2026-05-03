@@ -1,31 +1,27 @@
 import win32evtlog
-import subprocess
-from pathlib import Path
 
-
-def read_log(server, log_type):
-    readLog = (win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ)
-    eventLogList = win32evtlog.OpenEventLog(server, log_type)
+def read_log(server,log_name):
+    eventList = [] # Logs will be storage in this list
+    eventOrder = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ # read  the logs from the newer for the oldest
 
     try:
-        events = win32evtlog.ReadEventLog(eventLogList, readLog, 0 )
-        for event in events[:10]:
-            print(f"Time {event.TimeGenerated}")
-            print(f"ID: {event.EventID}")
-            print(f"Category: {event.EventCategory}")
-            print("--" * 10)
-    finally:
-        win32evtlog.CloseEventLog(eventLogList)
+        eventOpen = win32evtlog.OpenEventLog(server, log_name) # Open  the connection with event viewer
 
-def create_file():
-    file_path = Path(r'C:\Users\ResTIC55\PycharmProjects\WinLogProject')
-    log_file =  file_path / "system_log.txt"
-    backup_file =  file_path / "backup.txt"
+    except Exception as e:
+        print(f"Failed to open event log {log_name} : {e}")
+        return []
 
-    file_path.mkdir(parents=True, exist_ok=True)
-    log_file.write_text("Teste")
+    while True:
+        events = win32evtlog.ReadEventLog(eventOpen, eventOrder, 0) # Read the event log
 
+        if not events: # If don't have logs, stop the code
+            break
 
+        for event in events: # Organize the format and save in the list.
+            eventList.append({
+                "event_id": event.EventID,
+                "source": event.SourceName,
+                "time": str (event.TimeGenerated),
+                "type": event.EventType})
 
-
-
+    return eventList
